@@ -7,14 +7,12 @@
   "observability": {
     "enabled": true
   },
-  "routes": [{ "pattern": "events.relaton.org", "custom_domain": true }]
-  // Subscription registry + delivery cursors (create the D1 database first,
-  // then add the binding with its id):
-  // "d1_databases": [
-  //   {
-  //     "binding": "DB",
-  //     "database_name": "events-relaton-org",
-  //     "database_id": "<fill after creation>"
-  //   }
-  // ]
+  "routes": [{ "pattern": "events.relaton.org", "custom_domain": true }],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "events-relaton-org",
+      "database_id": "fe95ff03-c853-4b02-87f3-5f812adc9a83"
+    }
+  ]
 }
