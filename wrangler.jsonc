@@ -3,6 +3,8 @@
   "name": "events-relaton-org",
   "main": "src/index.ts",
   "compatibility_date": "2026-07-01",
+  "rules": [{ "type": "Text", "globs": ["**/*.yaml"] }],
+  "triggers": { "crons": ["*/2 * * * *"] },
   "workers_dev": true,
   "observability": {
     "enabled": true

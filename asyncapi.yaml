@@ -1,0 +1,130 @@
+asyncapi: '3.0.0'
+info:
+  title: Relaton Index events
+  version: '1.0.0'
+  description: |
+    The freshness notification surface of the Relaton Index: typed events
+    for everything that changes in the dataset. Delivery surfaces:
+
+    - **webhook**: CloudEvents 1.0 envelope headers over a POST of the
+      message payload, HMAC-SHA256-signed (`webhook-signature: v1,<hex>`
+      over `<webhook-id>.<webhook-timestamp>.<body>`), idempotent retries
+      (bounded attempts, exponential-ladder sweep).
+    - **sse**: `GET /v1/stream` — the same payloads as `data:` frames,
+      `event:` carries the message type, `id:` the monotonic event id
+      (Last-Event-ID replays).
+    - **feeds**: Atom and JSON Feed per flavor, over the same log.
+
+  license:
+    name: CC-BY-4.0
+    url: https://creativecommons.org/licenses/by/4.0/
+defaultContentType: application/json
+
+servers:
+  production:
+    host: events.relaton.org
+    protocol: https
+    security:
+      - adminBearer: []
+
+channels:
+  relaton/datasets/{flavor}/updated:
+    address: relaton/datasets/{flavor}/updated
+    parameters:
+      flavor:
+        description: The data flavor id (e.g. iso, rfc, ieee).
+    messages:
+      datasetUpdated:
+        $ref: '#/components/messages/datasetUpdated'
+  relaton/records/{key}/changed:
+    address: relaton/records/{key}/changed
+    parameters:
+      key:
+        description: The record's canonical corpus key (e.g. "ISO 9001:2015").
+    messages:
+      recordChanged:
+        $ref: '#/components/messages/recordChanged'
+  relaton/records/{key}/superseded:
+    address: relaton/records/{key}/superseded
+    parameters:
+      key:
+        description: The superseded record's canonical corpus key.
+    messages:
+      recordSuperseded:
+        $ref: '#/components/messages/recordSuperseded'
+
+operations:
+  receiveDatasetUpdated:
+    action: receive
+    channel:
+      $ref: '#/channels/relaton/datasets/{flavor}/updated'
+  receiveRecordChanged:
+    action: receive
+    channel:
+      $ref: '#/channels/relaton/records/{key}/changed'
+  receiveRecordSuperseded:
+    action: receive
+    channel:
+      $ref: '#/channels/relaton/records/{key}/superseded'
+
+components:
+  securitySchemes:
+    adminBearer:
+      type: http
+      scheme: bearer
+      description: Admin bearer token for registration and event ingestion (delivery consumers need no auth on SSE/feeds).
+  messages:
+    datasetUpdated:
+      name: datasetUpdated
+      title: A flavor's dataset was re-ingested
+      summary: Raised once per ingest wave that changes the dataset (manifest-sha gated upstream — re-ingests of an unchanged dataset emit nothing).
+      payload:
+        type: object
+        required: [flavor, generation, doc_count]
+        additionalProperties: false
+        properties:
+          flavor:
+            type: string
+          generation:
+            type: string
+            description: The dataset generation identifier (sha of count + latest indexed_at).
+          doc_count:
+            type: integer
+          manifest_sha:
+            type: [string, 'null']
+    recordChanged:
+      name: recordChanged
+      title: A bibliographic record changed
+      summary: One record created, updated or deleted.
+      payload:
+        type: object
+        required: [flavor, key, reason]
+        additionalProperties: false
+        properties:
+          flavor:
+            type: string
+          key:
+            type: string
+          reason:
+            type: string
+            enum: [created, updated, superseded, deleted]
+          superseded_by:
+            type: [string, 'null']
+    recordSuperseded:
+      name: recordSuperseded
+      title: A record was superseded by another
+      summary: The supersession semantics the graph already models, as an event.
+      payload:
+        type: object
+        required: [flavor, key, reason, superseded_by]
+        additionalProperties: false
+        properties:
+          flavor:
+            type: string
+          key:
+            type: string
+          reason:
+            type: string
+            enum: [superseded]
+          superseded_by:
+            type: string
