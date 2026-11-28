@@ -113,7 +113,9 @@ export default {
         `SELECT * FROM events WHERE id > (SELECT COALESCE(MAX(id), 0) FROM events) - ?1 ORDER BY id`,
       ).bind(rows.length).all<EventRow>();
       const inserted = (results ?? []).slice(-rows.length);
-      dispatchEvents(env.DB, inserted, (p) => ctx.waitUntil(p));
+      // The whole dispatch is waitUntil-tracked: its own cursor inserts
+      // must survive the response, not just the per-subscriber attempts.
+      ctx.waitUntil(dispatchEvents(env.DB, inserted, (p) => ctx.waitUntil(p)));
       return Response.json({ accepted: inserted.length, ids: inserted.map((e) => e.id) });
     }
 
